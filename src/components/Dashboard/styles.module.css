@@ -1,0 +1,14 @@
+.dashboard {
+  display: flex;
+}
+
+.dashboard > * {
+  flex: 1;
+}
+
+.header {
+  font-weight: normal;
+  font-size: 17px;
+  margin-left: 1.1rem;
+  color: #8d8d8d;
+}
