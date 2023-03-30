@@ -1,7 +1,4 @@
 import React from "react";
-import { connect } from "react-redux";
-import Dashboard from "../../Dashboard";
-import { setCurrentArtworkId } from '../../../redux/actions/notes';
 
 import NavBar from "../../NavBar";
 
@@ -15,22 +12,8 @@ const artworks = [
 ];
 // </donotmodify>
 
-
-const ArtworksPage = props => {
-  return (
-    <div>
-      <NavBar />
-      <Dashboard 
-        artworks={ artworks } 
-        {...props} >Artworks</Dashboard>
-    </div>
-  )
-}
-
-const mapStateToProps = (state) => ({
-  artworkId: state.notesPage.artworkId
-})
-
-export default connect(mapStateToProps, {
-  setCurrentArtworkId
-})(ArtworksPage);
+export default props => (
+  <div>
+    <NavBar />
+  </div>
+);

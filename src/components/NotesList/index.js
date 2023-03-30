@@ -4,6 +4,10 @@ import { addNote } from "../../redux/actions/notes";
 
 import styles from "./styles.module.css";
 
+const enhance = connect(
+  ({ notes }) => ({ notes }),
+  { addNote }
+);
 
 class NotesList extends React.Component {
   render() {
@@ -42,10 +46,4 @@ class NotesList extends React.Component {
   };
 }
 
-const mapStateToProps = (state) => ({
-  notes: state.notesPage.notes
-})
-
-export default connect(mapStateToProps, {
-  addNote
-})(NotesList);
+export default enhance(NotesList);
