@@ -1,0 +1,796 @@
+From a71b6a957086305a198480294c07d328ec9e3d14 Mon Sep 17 00:00:00 2001
+From: ReSenpai <bezbana1@gmail.com>
+Date: Mon, 5 Oct 2020 23:36:32 +0300
+Subject: [PATCH] =?UTF-8?q?=F0=9F=8E=89=20tada!?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ README.md                                     | 32 ++++++++++
+ src/App.js                                    | 36 ++++++-----
+ .../Dashboard/ItemList/ArtistsList.js         | 25 ++++++++
+ .../Dashboard/ItemList/ArtworksList.js        | 35 +++++++++++
+ .../Dashboard/ItemList/styles.module.css      | 31 ++++++++++
+ .../Dashboard/SpotLight/ArtistsSpotLight.js   | 23 +++++++
+ .../Dashboard/SpotLight/ArtworksSpotLight.js  | 19 ++++++
+ .../Dashboard/SpotLight/SpotLight.js          | 19 ++++++
+ .../Dashboard/SpotLight/styles.module.css     | 32 ++++++++++
+ src/components/Dashboard/index.js             | 61 ++++---------------
+ src/components/Dashboard/styles.module.css    | 52 ----------------
+ src/components/NotesList/index.js             | 12 ++--
+ src/components/Pages/Artists/index.js         |  3 +-
+ src/components/Pages/Artworks/index.js        | 27 ++++++--
+ src/index.js                                  | 10 ++-
+ src/redux/actions/app.js                      |  3 +
+ src/redux/actions/notes.js                    | 16 ++---
+ src/redux/reducers/app.js                     | 19 ++++++
+ src/redux/reducers/notes.js                   | 34 ++++++++---
+ src/redux/sagas/sagas.js                      | 25 ++++++++
+ src/redux/store/configureStore.js             | 31 +++++++---
+ 21 files changed, 393 insertions(+), 152 deletions(-)
+ create mode 100644 src/components/Dashboard/ItemList/ArtistsList.js
+ create mode 100644 src/components/Dashboard/ItemList/ArtworksList.js
+ create mode 100644 src/components/Dashboard/ItemList/styles.module.css
+ create mode 100644 src/components/Dashboard/SpotLight/ArtistsSpotLight.js
+ create mode 100644 src/components/Dashboard/SpotLight/ArtworksSpotLight.js
+ create mode 100644 src/components/Dashboard/SpotLight/SpotLight.js
+ create mode 100644 src/components/Dashboard/SpotLight/styles.module.css
+ create mode 100644 src/redux/actions/app.js
+ create mode 100644 src/redux/reducers/app.js
+ create mode 100644 src/redux/sagas/sagas.js
+
+diff --git a/README.md b/README.md
+index 01d5cd2..5e36bfb 100644
+--- a/README.md
++++ b/README.md
+@@ -35,3 +35,35 @@ git format-patch master --stdout > diff.patch
+ - Используя redux saga сохраняйте данные "Notes" в localstorage
+ - Реализуйте секцию "Artworks" аналогичным образом как сделано в существующей секции "Artists". Массив данных расположен в `src/components/Pages/Artworks/index.js`. Избегайте копирования кода и следуйте best-практисам React-мира.
+ - Исправьте код секции "Artworks" так, чтобы при выборе работы не изменялся url-адрес. 
++
++
++
++## Улучшения.
++
++1. При отмене записи в Notes в массив все равно записывается значенеи null. Это можно и нужно поправить.
++
++2. Типизация приложения исключила бы проблму с типами, как та из-за которой возник баг в секции "Notes" в редьюсере. 
++
++3. Покрыть тестами бизнес логику, для улучшения отладки.
++
++4. Обернуть компоненты контейнерными компонента, для улучшения чистоты компонент.
++
++5. Переименовал бы константы для экшенов по redux ducks (как я сделал в своих примерах кода).
++
++6. Прокидывал бы пропсы более точно, без лишних знаний для компоненты.
++
++7. Переименовал бы все файлы в их фактические названия с перфиксами, а то куча index.js плодит путаницу :) Но это скорее уже вкусовщина.
++
++8. Добавить кнопку очисти local Storage. Можно как доп задание сделать, поскольку сама собой напрашивается.
++
++9. Добавить селекторы.
++
++P.S. На саге писал первый раз, если не все гладно, прошу понять и простить.
++
++
++
++## Фитбек
++
++Задание классное, кретивно :) Предлагаю еще что нибудь сломать в проекте и добавить jest в сборку.
++
++Спасибо за интересную задачку. Создатели молодцы !
+\ No newline at end of file
+diff --git a/src/App.js b/src/App.js
+index 50cb330..7fbc55a 100644
+--- a/src/App.js
++++ b/src/App.js
+@@ -1,31 +1,39 @@
+ import React, { Component } from "react";
+ import { Switch, Route } from "react-router";
+-import { Provider } from "react-redux";
+ import { HashRouter } from "react-router-dom";
+-import configureStore from "./redux/store/configureStore";
++import { connect } from 'react-redux';
++import { setIsInitialization } from './redux/actions/app';
+ 
+ import HomePage from "./components/Pages/Home";
+ import ArtistsPage from "./components/Pages/Artists";
+ import ArtworksPage from "./components/Pages/Artworks";
+ import NotesPage from "./components/Pages/Notes";
+ 
+-const store = configureStore();
+ 
+ class App extends Component {
++  
++  componentDidMount() {
++    this.props.setIsInitialization(true);
++  }
++
+   render() {
+     return (
+-      <Provider store={store}>
+-        <HashRouter>
+-          <Switch>
+-            <Route exact path="/" component={HomePage} />
+-            <Route path="/notes" component={NotesPage} />
+-            <Route path="/artists/:artistId*" component={ArtistsPage} />
+-            <Route path="/artworks" component={ArtworksPage} />
+-          </Switch>
+-        </HashRouter>
+-      </Provider>
++      <HashRouter>
++        <Switch>
++          <Route exact path="/" component={HomePage} />
++          <Route path="/notes" component={NotesPage} />
++          <Route path="/artists/:itemId*" component={ArtistsPage} />
++          <Route path="/artworks" component={ArtworksPage} />
++        </Switch>
++      </HashRouter>
+     );
+   }
+ }
+ 
+-export default App;
++const mapStateToProps = (state) => ({
++  // state
++})
++
++export default connect(mapStateToProps, {
++  setIsInitialization
++})(App);
+diff --git a/src/components/Dashboard/ItemList/ArtistsList.js b/src/components/Dashboard/ItemList/ArtistsList.js
+new file mode 100644
+index 0000000..6ded7ab
+--- /dev/null
++++ b/src/components/Dashboard/ItemList/ArtistsList.js
+@@ -0,0 +1,25 @@
++import React from 'react';
++import { NavLink } from 'react-router-dom';
++
++import styles from "./styles.module.css";
++
++const ArtistsList = props => {
++  return props.artists.map(artist => (
++      <NavLink
++        key={artist._id}
++        to={`/artists/${artist._id}`}
++        className={styles['items-row']}
++        activeClassName={styles['active-items-row']}
++      >
++        <div
++          className={styles['items-avatar']}
++          style={{
++            backgroundImage: `url(/imgs/artists/${artist._id}.png)`
++          }}
++        />
++        <span>{`${artist.firstName} ${artist.lastName}`}</span>
++      </NavLink>
++  ));
++}
++
++export default ArtistsList;
+\ No newline at end of file
+diff --git a/src/components/Dashboard/ItemList/ArtworksList.js b/src/components/Dashboard/ItemList/ArtworksList.js
+new file mode 100644
+index 0000000..7d53491
+--- /dev/null
++++ b/src/components/Dashboard/ItemList/ArtworksList.js
+@@ -0,0 +1,35 @@
++import React, { useState } from 'react';
++import { NavLink } from 'react-router-dom';
++import classname from 'classnames';
++
++import styles from "./styles.module.css";
++
++const ArtworksList = props => {
++
++  const [activeId, setId] = useState(0);
++  const setCurrentArtworkId = (itemId) => {
++    props.setCurrentArtworkId(itemId)
++    setId(itemId);
++  }
++
++  return props.artworks.map(artwork => (
++      <NavLink
++        key={artwork._id}
++        to={`/artworks`}
++        className={classname({
++          [styles['active-items-row']] : activeId === artwork._id,
++        }, styles['items-row'])}
++        onClick={ () => setCurrentArtworkId(artwork._id) }
++      >
++        <div
++          className={ styles['items-avatar'] }
++          style={{
++            backgroundImage: `url(/imgs/artworks/${artwork._id}.jpg)`
++          }}
++        />
++        <span>{artwork.title}</span>
++      </NavLink>
++  ));
++}
++
++export default ArtworksList;
+\ No newline at end of file
+diff --git a/src/components/Dashboard/ItemList/styles.module.css b/src/components/Dashboard/ItemList/styles.module.css
+new file mode 100644
+index 0000000..6d60e37
+--- /dev/null
++++ b/src/components/Dashboard/ItemList/styles.module.css
+@@ -0,0 +1,31 @@
++.items-row {
++    width: 100%;
++    display: flex;
++    align-items: center;
++    border-bottom: 1px solid #e3e9e8;
++    padding: 0.3rem 0.5rem;
++    height: 4rem;
++    font-size: 1.1rem;
++    background-color: white;
++    text-Decoration: none;
++    color: black;
++}
++
++.active-items-row {
++    background-color: #f6fafb;
++    background-image: linear-gradient(108deg, rgb(235, 244, 244) 50%, rgb(251, 253, 253) 45%, rgb(255, 255, 255) 85%, rgb(255, 255, 255) 100%);
++    cursor: default;
++}
++
++.items-avatar {
++    height: 3rem;
++    width: 3rem;
++    margin: 0 0.6rem;
++    border-radius: 50%;
++    background-size: cover;
++}
++
++.action {
++    background-color: black;
++    color: red;
++}
+\ No newline at end of file
+diff --git a/src/components/Dashboard/SpotLight/ArtistsSpotLight.js b/src/components/Dashboard/SpotLight/ArtistsSpotLight.js
+new file mode 100644
+index 0000000..6bd06bb
+--- /dev/null
++++ b/src/components/Dashboard/SpotLight/ArtistsSpotLight.js
+@@ -0,0 +1,23 @@
++import React from 'react';
++import SpotLight from './SpotLight';
++
++
++const ArtistsSpotLight = props => {
++  const selectedItemsId = props.match.params && props.match.params.itemId;
++  if (!selectedItemsId) {
++    return null;
++  }
++
++  const itemInSpotlight = props.artists.find(
++    artist => artist._id === selectedItemsId
++  );
++
++  const label = itemInSpotlight && `${itemInSpotlight.firstName} ${itemInSpotlight.lastName}`;
++  const imgUrl = `imgs/artists/${itemInSpotlight && itemInSpotlight._id}.png`;
++  
++    return (
++      <SpotLight {...{label, imgUrl}} />
++    );
++}
++
++export default ArtistsSpotLight;
+\ No newline at end of file
+diff --git a/src/components/Dashboard/SpotLight/ArtworksSpotLight.js b/src/components/Dashboard/SpotLight/ArtworksSpotLight.js
+new file mode 100644
+index 0000000..77cb12f
+--- /dev/null
++++ b/src/components/Dashboard/SpotLight/ArtworksSpotLight.js
+@@ -0,0 +1,19 @@
++import React from 'react';
++import SpotLight from './SpotLight';
++
++
++const ArtworksSpotLight = props => {
++  if (!props.artworkId) return
++
++  const itemInSpotlight = props.artworks.find(
++    artwork => artwork._id === props.artworkId
++  );
++
++  const label = itemInSpotlight && itemInSpotlight.title;
++  const imgUrl = `imgs/artworks/${itemInSpotlight && itemInSpotlight._id}.jpg`;
++  return (
++    <SpotLight {...{label, imgUrl}} imgBigSize={ true } />
++  );
++}
++
++export default ArtworksSpotLight;
+\ No newline at end of file
+diff --git a/src/components/Dashboard/SpotLight/SpotLight.js b/src/components/Dashboard/SpotLight/SpotLight.js
+new file mode 100644
+index 0000000..d34d014
+--- /dev/null
++++ b/src/components/Dashboard/SpotLight/SpotLight.js
+@@ -0,0 +1,19 @@
++import React from 'react';
++
++import styles from "./styles.module.css";
++
++const SpotLight = props => {
++    return (
++      <div className={styles['spotlight']}>
++        <div
++          className={ props.imgBigSize ? styles['spotlight-img-bigsize'] : styles['spotlight-img']}
++          style={{
++            backgroundImage: `url(${props.imgUrl})`
++          }}
++        />
++        <div className={styles['spotlight-label']}>{props.label}</div>
++      </div>
++    );
++}
++
++export default SpotLight;
+\ No newline at end of file
+diff --git a/src/components/Dashboard/SpotLight/styles.module.css b/src/components/Dashboard/SpotLight/styles.module.css
+new file mode 100644
+index 0000000..7d1cc6f
+--- /dev/null
++++ b/src/components/Dashboard/SpotLight/styles.module.css
+@@ -0,0 +1,32 @@
++.spotlight {
++    padding-top: 105px;
++    box-sizing: border-box;
++    height: 400px;
++    width: 460px;
++    margin-left: auto;
++    background-image:
++      "linear-gradient(288deg, rgb(235, 244, 244) 50%, rgb(251, 253, 253) 45%, rgb(255, 255, 255) 85%, rgb(255, 255, 255) 100%)";
++}
++
++.spotlight-img {
++    height: 9rem;
++    width: 9rem;
++    margin: auto;
++    border-radius: 50%;
++    background-size: cover;
++}
++
++.spotlight-img-bigsize {
++    height: 26rem;
++    width: 40rem;
++    margin: auto;
++    border-radius: 5%;
++    background-size: cover;
++}
++
++.spotlight-label {
++    font-weight: bold;
++    text-align: center;
++    margin: 20px 0;
++    font-size: 25px;
++}
+\ No newline at end of file
+diff --git a/src/components/Dashboard/index.js b/src/components/Dashboard/index.js
+index e5dfe82..844fc1f 100644
+--- a/src/components/Dashboard/index.js
++++ b/src/components/Dashboard/index.js
+@@ -1,6 +1,9 @@
+ import React from "react";
+ import { withRouter } from "react-router";
+-import { NavLink } from 'react-router-dom';
++import ArtworksList from "./ItemList/ArtworksList";
++import ArtistsList from "./ItemList/ArtistsList";
++import ArtistsSpotLight from "./SpotLight/ArtistsSpotLight";
++import ArtworksSpotLight from "./SpotLight/ArtworksSpotLight";
+ 
+ import styles from "./styles.module.css";
+ 
+@@ -9,55 +12,15 @@ class Dashboard extends React.Component {
+     return (
+       <div className={styles['dashboard']}>
+         <div>
+-          <h3 className={styles['header']}>Artists</h3>
+-          {this.renderArtistList()}
++          <h3 className={styles['header']}>{ this.props.children }</h3>
++            { this.props.artworkId
++              ? <ArtworksList {...this.props}/>
++              :  <ArtistsList {...this.props} />}
+         </div>
+-        {this.renderSpotLight()}
+-      </div>
+-    );
+-  }
+-
+-  renderArtistList() {
+-    return this.props.artists.map(artist => (
+-      <NavLink
+-        key={artist._id}
+-        to={`/artists/${artist._id}`}
+-        className={styles['artist-row']}
+-        activeClassName={styles['active-artist-row']}
+-      >
+-        <div
+-          className={styles['artist-avatar']}
+-          style={{
+-            backgroundImage: `url(/imgs/artists/${artist._id}.png)`
+-          }}
+-        />
+-        <span>{`${artist.firstName} ${artist.lastName}`}</span>
+-      </NavLink>
+-    ));
+-  }
+-
+-  renderSpotLight() {
+-    const props = this.props;
+-    const selectedArtistId = props.match.params && props.match.params.artistId;
+-    if (!selectedArtistId) {
+-      return null;
+-    }
+-    const artistInSpotlight = props.artists.find(
+-      artist => artist._id === selectedArtistId
+-    );
+-    const label = `${artistInSpotlight.firstName} ${
+-      artistInSpotlight.lastName
+-    }`;
+-    const imgUrl = `imgs/artists/${artistInSpotlight._id}.png`;
+-    return (
+-      <div className={styles['spotlight']}>
+-        <div
+-          className={styles['spotlight-img']}
+-          style={{
+-            backgroundImage: `url(${imgUrl})`
+-          }}
+-        />
+-        <div className={styles['spotlight-label']}>{label}</div>
++          { this.props.artworkId
++            ? <ArtworksSpotLight {...this.props} />
++            : <ArtistsSpotLight {...this.props} />
++          }
+       </div>
+     );
+   }
+diff --git a/src/components/Dashboard/styles.module.css b/src/components/Dashboard/styles.module.css
+index 9e3513e..81ca876 100644
+--- a/src/components/Dashboard/styles.module.css
++++ b/src/components/Dashboard/styles.module.css
+@@ -11,56 +11,4 @@
+   font-size: 17px;
+   margin-left: 1.1rem;
+   color: #8d8d8d;
+-}
+-
+-.artist-row {
+-  width: 100%;
+-  display: flex;
+-  align-items: center;
+-  border-bottom: 1px solid #e3e9e8;
+-  padding: 0.3rem 0.5rem;
+-  height: 4rem;
+-  font-size: 1.1rem;
+-  background-color: white;
+-  text-Decoration: none;
+-  color: black;
+-}
+-
+-.active-artist-row {
+-  background-color: #f6fafb;
+-  background-image: linear-gradient(108deg, rgb(235, 244, 244) 50%, rgb(251, 253, 253) 45%, rgb(255, 255, 255) 85%, rgb(255, 255, 255) 100%);
+-  cursor: default;
+-}
+-
+-.artist-avatar {
+-  height: 3rem;
+-  width: 3rem;
+-  margin: 0 0.6rem;
+-  border-radius: 50%;
+-  background-size: cover;
+-}
+-
+-.spotlight {
+-  padding-top: 105px;
+-  box-sizing: border-box;
+-  height: 400px;
+-  width: 460px;
+-  margin-left: auto;
+-  background-image:
+-    "linear-gradient(288deg, rgb(235, 244, 244) 50%, rgb(251, 253, 253) 45%, rgb(255, 255, 255) 85%, rgb(255, 255, 255) 100%)";
+-}
+-
+-.spotlight-img {
+-  height: 9rem;
+-  width: 9rem;
+-  margin: auto;
+-  border-radius: 50%;
+-  background-size: cover;
+-}
+-
+-.spotlight-label {
+-  font-weight: bold;
+-  text-align: center;
+-  margin: 20px 0;
+-  font-size: 25px;
+ }
+\ No newline at end of file
+diff --git a/src/components/NotesList/index.js b/src/components/NotesList/index.js
+index c094659..1ee8f0f 100644
+--- a/src/components/NotesList/index.js
++++ b/src/components/NotesList/index.js
+@@ -4,10 +4,6 @@ import { addNote } from "../../redux/actions/notes";
+ 
+ import styles from "./styles.module.css";
+ 
+-const enhance = connect(
+-  ({ notes }) => ({ notes }),
+-  { addNote }
+-);
+ 
+ class NotesList extends React.Component {
+   render() {
+@@ -46,4 +42,10 @@ class NotesList extends React.Component {
+   };
+ }
+ 
+-export default enhance(NotesList);
++const mapStateToProps = (state) => ({
++  notes: state.notesPage.notes
++})
++
++export default connect(mapStateToProps, {
++  addNote
++})(NotesList);
+diff --git a/src/components/Pages/Artists/index.js b/src/components/Pages/Artists/index.js
+index 76c7859..1cbc3f1 100644
+--- a/src/components/Pages/Artists/index.js
++++ b/src/components/Pages/Artists/index.js
+@@ -17,7 +17,8 @@ export default props => {
+   return (
+     <div>
+       <NavBar />
+-      <Dashboard artists={artists} />
++      <Dashboard 
++        artists={ artists } >Artists</Dashboard>
+     </div>
+   );
+ };
+diff --git a/src/components/Pages/Artworks/index.js b/src/components/Pages/Artworks/index.js
+index 611217b..a7d1da8 100644
+--- a/src/components/Pages/Artworks/index.js
++++ b/src/components/Pages/Artworks/index.js
+@@ -1,4 +1,7 @@
+ import React from "react";
++import { connect } from "react-redux";
++import Dashboard from "../../Dashboard";
++import { setCurrentArtworkId } from '../../../redux/actions/notes';
+ 
+ import NavBar from "../../NavBar";
+ 
+@@ -12,8 +15,22 @@ const artworks = [
+ ];
+ // </donotmodify>
+ 
+-export default props => (
+-  <div>
+-    <NavBar />
+-  </div>
+-);
++
++const ArtworksPage = props => {
++  return (
++    <div>
++      <NavBar />
++      <Dashboard 
++        artworks={ artworks } 
++        {...props} >Artworks</Dashboard>
++    </div>
++  )
++}
++
++const mapStateToProps = (state) => ({
++  artworkId: state.notesPage.artworkId
++})
++
++export default connect(mapStateToProps, {
++  setCurrentArtworkId
++})(ArtworksPage);
+\ No newline at end of file
+diff --git a/src/index.js b/src/index.js
+index 0c5e75d..3f6a45c 100644
+--- a/src/index.js
++++ b/src/index.js
+@@ -3,8 +3,16 @@ import ReactDOM from 'react-dom';
+ import './index.css';
+ import App from './App';
+ import * as serviceWorker from './serviceWorker';
++import { Provider } from "react-redux";
++import store from './redux/store/configureStore';
+ 
+-ReactDOM.render(<App />, document.getElementById('root'));
++
++ReactDOM.render(
++    <Provider store={ store }>
++        <App />
++    </Provider>, 
++    document.getElementById('root')
++);
+ 
+ // If you want your app to work offline and load faster, you can change
+ // unregister() to register() below. Note this comes with some pitfalls.
+diff --git a/src/redux/actions/app.js b/src/redux/actions/app.js
+new file mode 100644
+index 0000000..cfe3a4d
+--- /dev/null
++++ b/src/redux/actions/app.js
+@@ -0,0 +1,3 @@
++export const SET_INITIALIZATION = 'app/SET_INITIALIZATION';
++
++export const setIsInitialization = (isInitialization) => ({type: SET_INITIALIZATION, isInitialization});
+\ No newline at end of file
+diff --git a/src/redux/actions/notes.js b/src/redux/actions/notes.js
+index 056ef1f..116d4bb 100644
+--- a/src/redux/actions/notes.js
++++ b/src/redux/actions/notes.js
+@@ -1,9 +1,9 @@
+-export const ADD_NOTE = "ADD_NOTE";
++export const ADD_NOTE = "notes/ADD_NOTE";
++export const SET_NOTES_FROM_LOCAL_STORAGE = 'notes/SET_NOTES_FROM_LOCAL_STORAGE';
++export const SET_CURRENT_ARTWORK_ID = 'notes/SET_CURRENT_ARTWORK_ID';
++
++// Actions
++export const addNote = (text, afterIndex) => ({type: ADD_NOTE, text, afterIndex});
++export const setNoteFromLocalStorage = (notes) => ({type: SET_NOTES_FROM_LOCAL_STORAGE, notes});
++export const setCurrentArtworkId = (artworkId) => ({type: SET_CURRENT_ARTWORK_ID, artworkId});
+ 
+-export function addNote(text, afterIndex) {
+-  return {
+-    type: ADD_NOTE,
+-    text,
+-    afterIndex
+-  };
+-}
+diff --git a/src/redux/reducers/app.js b/src/redux/reducers/app.js
+new file mode 100644
+index 0000000..4c38b88
+--- /dev/null
++++ b/src/redux/reducers/app.js
+@@ -0,0 +1,19 @@
++import { SET_INITIALIZATION } from "../actions/app";
++
++const initState = {
++    isInitialized: false
++}
++
++const appReducer = (state = initState, action) => {
++  switch (action.type) {
++    case SET_INITIALIZATION:
++        return {
++            ...state,
++            isInitialized: action.isInitialization
++        };
++    default:
++      return state;
++  }
++}
++
++export default appReducer;
+diff --git a/src/redux/reducers/notes.js b/src/redux/reducers/notes.js
+index 5ad0640..25167e5 100644
+--- a/src/redux/reducers/notes.js
++++ b/src/redux/reducers/notes.js
+@@ -1,16 +1,34 @@
+-import { ADD_NOTE } from "../actions/notes";
++import { ADD_NOTE, SET_CURRENT_ARTWORK_ID, SET_NOTES_FROM_LOCAL_STORAGE } from "../actions/notes";
+ 
+-const initState = ["note 1", "note 2", "note 3", "note 4"];
++const initState = {
++  notes: ["note 1", "note 2", "note 3", "note 4"],
++  artworkId: 1
++}
+ 
+-export default function(state = initState, action) {
++const notesReducer = (state = initState, action) => {
+   switch (action.type) {
+     case ADD_NOTE:
+-      return [
+-        ...state.slice(0, action.afterIndex + 1),
+-        action.text,
+-        ...state.slice(action.afterIndex + 1)
+-      ];
++      return {
++        ...state,
++        notes: [
++          ...state.notes.slice(0, parseInt(action.afterIndex) + 1),
++          action.text,
++          ...state.notes.slice(parseInt(action.afterIndex) + 1)
++        ]
++      }
++    case SET_NOTES_FROM_LOCAL_STORAGE:
++      return {
++        ...state,
++        notes: [...action.notes]
++      }
++    case SET_CURRENT_ARTWORK_ID:
++      return {
++        ...state,
++        artworkId: action.artworkId
++      }
+     default:
+       return state;
+   }
+ }
++
++export default notesReducer;
+diff --git a/src/redux/sagas/sagas.js b/src/redux/sagas/sagas.js
+new file mode 100644
+index 0000000..4fc59b9
+--- /dev/null
++++ b/src/redux/sagas/sagas.js
+@@ -0,0 +1,25 @@
++import { put, takeEvery, select } from 'redux-saga/effects';
++import { SET_INITIALIZATION } from '../actions/app';
++import { ADD_NOTE, setNoteFromLocalStorage } from '../actions/notes';
++
++export const NOTES_ARRAY = 'sagas/NOTES_ARRAY';
++
++
++function* addNotesToLocalStorage(action) {
++    const state = yield select();
++    localStorage.setItem(NOTES_ARRAY, JSON.stringify(state.notesPage.notes));
++}
++
++function* getNotesFromLocalStorage(action) {
++    const notes = localStorage.getItem(NOTES_ARRAY)
++    if (notes && notes !== 'undefined') {
++        yield put(setNoteFromLocalStorage(JSON.parse(notes)));
++    }
++}
++
++function* mySaga() {
++   yield takeEvery(ADD_NOTE, addNotesToLocalStorage);
++   yield takeEvery(SET_INITIALIZATION, getNotesFromLocalStorage);
++}
++
++export default mySaga;
+\ No newline at end of file
+diff --git a/src/redux/store/configureStore.js b/src/redux/store/configureStore.js
+index 5d8fd99..1ee9e12 100644
+--- a/src/redux/store/configureStore.js
++++ b/src/redux/store/configureStore.js
+@@ -1,9 +1,22 @@
+-import { createStore } from 'redux';
+-import rootReducer from '../reducers/';
+-
+-export default function() {
+-  return createStore(
+-    rootReducer,
+-    window.__REDUX_DEVTOOLS_EXTENSION__ && window.__REDUX_DEVTOOLS_EXTENSION__()
+-  );
+-}
+\ No newline at end of file
++import { applyMiddleware, combineReducers, compose, createStore } from 'redux';
++import createSagaMiddleware from 'redux-saga';
++import appReducer from '../reducers/app';
++import notesReducer from '../reducers/notes';
++import mySaga from '../sagas/sagas';
++
++const sagaMiddleware = createSagaMiddleware();
++const composeEnhancers = window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__ || compose;
++
++const rootReducer = combineReducers({
++  app: appReducer,
++  notesPage: notesReducer
++});
++
++const store = createStore(
++  rootReducer,
++  composeEnhancers(applyMiddleware(sagaMiddleware))
++);
++
++sagaMiddleware.run(mySaga);
++
++export default store;
+\ No newline at end of file
+-- 
+2.17.1
+
